@@ -5,8 +5,18 @@ from pygame.locals import RLEACCEL
 import math
 import pygame
 
-# quick function to load an image
-def load_image(filename: str, filedir: str = 'assets/img/', colorkey=None) -> Tuple[Union[pg.Surface], Union[pg.Rect]]:
+
+def load_image(filename: str,
+               filedir: str = 'assets/img/',
+               colorkey: int = None) -> Tuple[Union[pg.Surface], Union[pg.Rect]]:
+    """
+    Loads an image and returns the converted pygame Surface and Rectangle objects
+
+    :param filename: string of the image file to load (such as 'lander.jpg')
+    :param filedir: optional string of the folder to pull from, defaults to 'assets/img/'
+    :param colorkey: optional int to represent the color key to pull
+    :return:
+    """
     path = os.path.join(filedir, filename)
     the_image = pg.image.load(path).convert()
     if colorkey is not None:
@@ -16,17 +26,39 @@ def load_image(filename: str, filedir: str = 'assets/img/', colorkey=None) -> Tu
     return the_image, the_image.get_rect()
 
 
-def load_sound(filename: str, main_dir: str = 'assets/snd/') -> pg.mixer.Sound:
-    """ because pygame can be be compiled without mixer.
+def load_sound(filename: str, filedir: str = 'assets/snd/') -> pg.mixer.Sound:
+    """
+    Loads a sound file and returns the converted pygame Sound object
+
+    :param filename: string of the image file to load (such as 'lander.jpg')
+    :param filedir: optional string of the folder to pull from, defaults to 'assets/img/'
+    :return:
     """
     if not pg.mixer:
         raise ValueError('Pygame sound mixer not installed properly')
-    file = os.path.join(main_dir, filename)
+    file = os.path.join(filedir, filename)
     try:
         sound = pg.mixer.Sound(file)
         return sound
     except pg.error:
-        raise RuntimeError(f'Warning, unable to load {filename}')
+        raise RuntimeError(f'Warning, unable to load {file}')
+
+
+def load_bgmusic(filename: str, filedir: str = 'assets/snd/') -> None:
+    """
+    Loads a sound file into the mixer
+
+    :param filename: string of the image file to load (such as 'lander.jpg')
+    :param filedir: optional string of the folder to pull from, defaults to 'assets/img/'
+    """
+    if not pg.mixer:
+        raise ValueError('Pygame sound mixer not installed properly')
+    file = os.path.join(filedir, filename)
+    try:
+        pg.mixer.init()
+        pg.mixer.music.load(file)
+    except pg.error:
+        raise RuntimeError(f'Warning, unable to load {file}')
 
 
 def render_center_text(surface, screen, txt, color):
