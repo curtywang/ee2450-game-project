@@ -1,81 +1,100 @@
 import pygame
 import random
+import sys
 import math
-
+from pygame.locals import QUIT, K_r, K_SPACE, K_UP, K_LEFT, K_RIGHT
 
 import helpers
 
 
 """
-hello
-
 TODO: collision when exit screen
 """
 
 
-class GameSettings(object):
+class LunarLanderGame(object):
     def __init__(self, screen_width: int, screen_height: int):
         self.screen_width = screen_width
         self.screen_height = screen_height
-        self.lander = None
-        self.moon = None
-        self.sprites = None
-        self.boulders = None
-        self.allsprites = None
+        self.font = pygame.font.Font(None, 14)
+        self.screen = pygame.display.set_mode((self.screen_width, self.screen_height), 0, 32)
+        self.surface = pygame.Surface(self.screen.get_size()).convert()
+        self.surface.fill((255, 255, 255))
+        pygame.key.set_repeat(1, 1)
 
-    def setup_game(self):
+        # draw sprites and objects #
         self.lander = Lander(self)
         self.moon = Moon(self)
-        self.sprites = [self.lander]
         self.boulders = [Boulder(self) for i in range(random.randint(2, 5))]
+        self.sprites = [self.lander, self.moon]
         self.sprites.extend(self.boulders)
-        self.sprites.append(self.moon)
-        self.allsprites = pygame.sprite.RenderPlain(self.sprites)
-        # return self.lander, self.moon, self.boulders,
+        self.all_sprites = pygame.sprite.RenderPlain(self.sprites)
+
+    def handle_keys(self):
+        pygame.event.pump()
+        keys = pygame.key.get_pressed()
+        for event in pygame.event.get():
+            if event.type == QUIT:
+                pygame.quit()
+                sys.exit()
+        if keys[K_SPACE] or keys[K_UP]:
+            self.lander.boost()
+        elif keys[K_LEFT]:
+            self.lander.rotate_left()
+        elif keys[K_RIGHT]:
+            self.lander.rotate_right()
+
+    def check_landing_and_collisions(self):
+        # TODO: what will you modify here to restart the game instead of just dying?
+        collision_occurred = False
+        for boulder in self.boulders:
+            collision_occurred = collision_occurred or self.lander.has_collided(boulder)
+        has_landed = self.lander.has_landed(self.moon)
+        if has_landed and self.lander.has_landed_safely():
+            helpers.render_center_text(self.surface, self.screen, "You landed successfully!", (0, 255, 0))
+            self.lander.stop()
+        elif collision_occurred or has_landed:
+            helpers.render_center_text(self.surface, self.screen, "Kaboom! Your craft is destroyed.", (255, 0, 0))
+            self.lander.explode(self.screen)
+            self.lander.stop()
+
+    def render_stats_text(self):
+        stats_text = self.font.render(self.lander.stats(), True, (10, 10, 10))
+        stats_pos = stats_text.get_rect()
+        stats_pos.centerx = self.screen_width // 2
+        self.surface.blit(stats_text, stats_pos)
+        self.screen.blit(self.surface, (0, 0))
+
+    def update_sprites(self):
+        self.all_sprites.update()
+        self.all_sprites.draw(self.screen)
+        self.surface.fill((255, 255, 255))
 
 
-class V(object):
-    """
-    A simple class to keep track of vectors, including initializing
-    from Cartesian and polar forms.
-    """
+class Moon(pygame.sprite.DirtySprite):
+    def __init__(self, settings: LunarLanderGame):
+        super().__init__()
+        self.height = 20
+        self.landing_allowed = True
+        self.width = settings.screen_width
+        self.image = pygame.Surface((self.width, self.height))
+        self.rect = pygame.Rect(0, settings.screen_height - self.height,
+                                settings.screen_width, self.height)
 
-    def __init__(self, x: float = 0, y: float = 0,
-                 angle: float = None, magnitude: float = None):
-        self.x = x
-        self.y = y
 
-        if angle is not None and magnitude is not None:
-            self.x = magnitude * math.sin(math.radians(angle))
-            self.y = magnitude * math.cos(math.radians(angle))
+class Boulder(pygame.sprite.DirtySprite):
+    def __init__(self, settings: LunarLanderGame):
+        super().__init__()
+        self.landing_allowed = False
+        self.diameter = random.randint(2, 120)
+        self.radius = self.diameter / 2
+        self.x_pos = random.randint(0, settings.screen_width)  # random placement on screen
 
-    @property
-    def magnitude(self):
-        return math.sqrt(self.x ** 2 + self.y ** 2)
-
-    @property
-    def angle(self):
-        if self.y == 0:
-            if self.x > 0:
-                return 90.0
-            else:
-                return 270.0
-        if math.floor(self.x) == 0:
-            if self.y < 0:
-                return 180.0
-        return math.degrees(math.atan(self.x / float(self.y)))
-
-    def __add__(self, other):
-        return V(x=(self.x + other.x), y=(self.y + other.y))
-
-    def rotate(self, angle):
-        c = math.cos(math.radians(angle))
-        s = math.sin(math.radians(angle))
-        self.x = self.x * c - self.y * s
-        self.y = self.x * s + self.y * c
-
-    def __str__(self):
-        return "X: %.3d Y: %.3d Angle: %.3d degrees Magnitude: %.3d" % (self.x, self.y, self.angle, self.magnitude)
+        self.image = pygame.Surface((self.diameter, self.diameter)).convert()
+        self.image.fill((255,255,255,128))
+        pygame.draw.circle(self.image, (128, 128, 128), (self.radius, self.radius), self.radius)
+        self.rect = pygame.Rect(self.x_pos, settings.screen_height - (20 + self.radius),
+                                self.diameter, self.diameter)
 
 
 class Lander(pygame.sprite.DirtySprite):
@@ -83,34 +102,52 @@ class Lander(pygame.sprite.DirtySprite):
     Our intrepid lunar lander!
     """
 
-    def __init__(self, settings: GameSettings):
+    def __init__(self, settings: LunarLanderGame):
         super().__init__()
         self.image, self.rect = helpers.load_image('lander.jpg', colorkey=-1)
         self.original = self.image
         self.original_flame, self.flame_rect = helpers.load_image('lander_flame.jpg', colorkey=-1)
         self.mass = 10
         self.orientation = 0.0  #
-        self.rect.topleft = ((settings.screen_width / 2), 20)  # The starting point.
-        self.velocity = V(0.0, 0.0)  # Starting velocity.
-        self.landed = False  # Have we landed yet?
+        self.rect.topleft = ((settings.screen_width / 4), 20)  # The starting point.
+        self.velocity = helpers.V(0.0, 0.0)  # Starting velocity.
+        self.stopped = False  # Have we stopped?
         self.intact = True  # Is the ship still shipshape?
-        self.fuel = 10  # Units of fuel
+        self.fuel = 30  # Units of fuel
         self.boosting = 0  # Are we in "boost" mode? (show the flame graphic)
         self.game_settings = settings
-        self.engine_power = 0.1  # The power of the engine.
-        self.falling_power = 0.05
+        self.engine_power = 0.14  # The power of the engine.
+        self.gravity_power = 0.05
         # return super(pygame.sprite.DirtySprite, self).__init__()
 
     def update_image(self):
         """
         Update our image based on orientation and engine state of the craft.
         """
-        img = self.original_flame if self.boosting else self.original
+        img = self.original_flame if self.boosting else self.original  # TODO: upgrade 5
         center = self.rect.center
         self.image = pygame.transform.rotate(img, -1 * self.orientation)
         self.rect = self.image.get_rect(center=center)
 
-    def rotate(self, angle):
+    def select_image(self):
+        """
+        Chooses the correct image for each state of the lander.
+        TODO: upgrade possibility 5 should be modified here!
+        """
+        if self.boosting:
+            return self.original_flame
+        elif not self.intact:
+            return self.original
+        else:
+            return self.original
+
+    def rotate_left(self, angle: float = 2.0):
+        """
+        Rotate the craft.
+        """
+        self.orientation -= angle
+
+    def rotate_right(self, angle: float = 2.0):
         """
         Rotate the craft.
         """
@@ -120,43 +157,45 @@ class Lander(pygame.sprite.DirtySprite):
         """
         Provide a boost to our craft's velocity in whatever orientation we're currently facing.
         """
-        if not self.fuel:
+        if self.fuel <= 0.0:
             return
-        self.velocity += V(magnitude=self.engine_power, angle=self.orientation)
+        self.velocity += helpers.V(magnitude=self.engine_power, angle=self.orientation)
         self.fuel -= self.engine_power
-        if self.landed:
-            self.landed = False
-            np = self.rect.move(0, -5)
-            self.rect = np
         self.boosting = 3
 
+    def stop(self):
+        self.velocity = helpers.V(0.0, 0.0)
+        self.stopped = True
+
     def physics_update(self):
-        if not self.landed:
-            self.velocity += V(magnitude=self.falling_power, angle=180)
+        if not self.stopped:
+            self.velocity += helpers.V(magnitude=self.gravity_power, angle=180)
 
-    def ok_to_land(self):
-        return (self.orientation < 10 or self.orientation > 350) and self.velocity.magnitude < 5
+    # TODO: make a check_collisions(self, boulder_list, moon_surface, screen) function to replace the below
 
-    def check_landed(self, surface):
-        if self.landed:
-            return
-        if hasattr(surface, "radius"):
-            collision = pygame.sprite.collide_circle(self, surface)
-        else:
-            collision = pygame.sprite.collide_rect(self, surface)
-        if collision:
-            self.landed = True
-            self.intact = self.ok_to_land() and surface.landing_ok
-            self.velocity = V(0.0, 0.0)  # In any case, we stop moving.
+
+    def has_landed_safely(self) -> bool:
+        self.intact = (self.orientation < 8 or self.orientation > 352) and self.velocity.magnitude < 3
+        return self.intact  # TODO: fix this
+
+    def has_collided(self, boulder_surface: Boulder) -> bool:
+        if self.intact:
+            self.intact = not pygame.sprite.collide_circle(self, boulder_surface)
+        return self.intact
+
+    def has_landed(self, moon_surface: Moon):
+        return pygame.sprite.collide_rect(self, moon_surface)
+
+    # TODO: replace the above
 
     def update(self):
+        self.dirty = True
         self.physics_update()  # Iterate physics
-        if self.boosting:
+        if self.boosting > 0:
             self.boosting -= 1  # Tick over engine time
         self.update_image()
         np = self.rect.move(self.velocity.x, -1 * self.velocity.y)
         self.rect = np
-        self.dirty = True
 
     def explode(self, screen):
         for i in range(random.randint(20, 40)):
@@ -170,35 +209,7 @@ class Lander(pygame.sprite.DirtySprite):
                              random.randint(1, 3))
 
     def stats(self):
-        return "Position: [%.2d,%.2d] Velocity: %.2f m/s at %.3d degrees Orientation: %.3d degrees  Fuel: %d Status: [%s]" % (
-            self.rect.top, self.rect.left, self.velocity.magnitude, self.velocity.angle, self.orientation, self.fuel, (
-                "Crashed" if not self.intact else (
-                    "Landed" if self.landed else ("OK to Land" if self.ok_to_land() else "Not OK"))))
-
-
-class Moon(pygame.sprite.DirtySprite):
-    def __init__(self, settings: GameSettings):
-        super().__init__()
-        self.width = settings.screen_width + 20
-        self.height = 20
-        self.image = pygame.Surface((self.width, self.height))
-        self.rect = pygame.Rect(-10, settings.screen_height - 20, settings.screen_width + 20, 20)
-        self.landing_ok = True
-        # return super(pygame.sprite.DirtySprite, self).__init__()
-
-
-class Boulder(pygame.sprite.DirtySprite):
-    def __init__(self, settings: GameSettings):
-        super().__init__()
-        self.diameter = random.randint(2, 300)
-        self.radius = self.diameter / 2
-        self.x_pos = random.randint(0, settings.screen_width)
-        self.image = pygame.Surface((self.diameter, self.diameter))
-        # self.image.fill((255,255,255,128))
-        pygame.draw.circle(self.image, (128, 128, 128), (self.radius, self.radius), self.radius)
-        self.rect = pygame.Rect(self.x_pos, settings.screen_height - (20 + self.radius),
-                                self.diameter, self.diameter)
-        self.image = self.image.convert()
-        self.landing_ok = False
-        # self.dirty = False
-        # return super(pygame.sprite.DirtySprite, self).__init__()
+        return ' '.join((f"Position: [{self.rect.top}, {self.rect.left}]",
+                         f"Velocity: {self.velocity.magnitude} at {self.velocity.angle} degrees",
+                         f"Orientation: {self.orientation} degrees",
+                         f"Fuel: {self.fuel} Status OK: [{self.intact}]"))
