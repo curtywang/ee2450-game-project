@@ -30,8 +30,8 @@ def load_sound(filename: str, filedir: str = 'assets/snd/') -> pg.mixer.Sound:
     """
     Loads a sound file and returns the converted pygame Sound object
 
-    :param filename: string of the image file to load (such as 'lander.jpg')
-    :param filedir: optional string of the folder to pull from, defaults to 'assets/img/'
+    :param filename: string of the sound file to load (such as 'music.mp4')
+    :param filedir: optional string of the folder to pull from, defaults to 'assets/snd/'
     :return:
     """
     if not pg.mixer:
@@ -48,8 +48,8 @@ def load_bgmusic(filename: str, filedir: str = 'assets/snd/') -> None:
     """
     Loads a sound file into the mixer
 
-    :param filename: string of the image file to load (such as 'lander.jpg')
-    :param filedir: optional string of the folder to pull from, defaults to 'assets/img/'
+    :param filename: string of the sound file to load (such as 'lander.mp4')
+    :param filedir: optional string of the folder to pull from, defaults to 'assets/snd/'
     """
     if not pg.mixer:
         raise ValueError('Pygame sound mixer not installed properly')
