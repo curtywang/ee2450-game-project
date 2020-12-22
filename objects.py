@@ -49,10 +49,10 @@ class LunarLanderGame(object):
         lander_status = self.lander.check_collisions()
         # TODO: Upgrade #5: Add code here to call bomb.check_collisions() for each bomb in self.lander.bombs
         if lander_status == 'LANDED':
-            helpers.render_center_text(self.surface, self.screen, "You landed successfully!", (0, 255, 0))
+            helpers.render_center_text(self.screen, "You landed successfully!", (0, 255, 0))
             return True
         elif lander_status == 'CRASHED':
-            helpers.render_center_text(self.surface, self.screen, "Kaboom! Your craft is destroyed.", (255, 0, 0))
+            helpers.render_center_text(self.screen, "Kaboom! Your craft is destroyed.", (255, 0, 0))
             return True
         else:
             return False
@@ -209,7 +209,6 @@ class Lander(pygame.sprite.DirtySprite):
         elif has_hit_moon or has_hit_boulder:  # TODO: You can achieve Upgrade #1 by just modifying this line.
             self.intact = False
             self.stop()
-            self.explode(self.game_object.screen)
             return 'CRASHED'
         else:
             return 'FLYING'
@@ -222,17 +221,6 @@ class Lander(pygame.sprite.DirtySprite):
         self.update_image()
         np = self.rect_normal.move(self.velocity.x, -1 * self.velocity.y)
         self.rect_normal = np
-
-    def explode(self, screen) -> None:
-        for i in range(random.randint(20, 40)):
-            pygame.draw.line(screen,
-                             (random.randint(190, 255),
-                              random.randint(0, 100),
-                              random.randint(0, 100)),
-                             self.rect_normal.center,
-                             (random.randint(0, self.game_object.screen_width),
-                              random.randint(0, self.game_object.screen_height)),
-                             random.randint(1, 3))
 
     def stats(self):
         return ' '.join((f"Position: [{self.rect_normal.top}, {self.rect_normal.left}]",

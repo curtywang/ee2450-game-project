@@ -61,14 +61,13 @@ def load_bgmusic(filename: str, filedir: str = 'assets/snd/') -> None:
         raise RuntimeError(f'Warning, unable to load {file}')
 
 
-def render_center_text(surface, screen, txt, color):
+def render_center_text(screen, txt, color):
     font2 = pygame.font.Font(None, 36)
     text = font2.render(txt, True, color)
     textpos = text.get_rect()
     textpos.centerx = screen.get_size()[0] // 2
     textpos.centery = screen.get_size()[1] // 2
-    surface.blit(text, textpos)
-    screen.blit(surface, (0, 0))
+    screen.blit(text, textpos)
 
 
 class V(object):

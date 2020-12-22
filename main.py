@@ -6,7 +6,7 @@ EE 2450 Final Project
 This game is basically a template for a lunar lander version with asteroids.
 It is your choice to make the following upgrades to the game.
 A minimum of two upgrades are needed for a C grade.
-Three upgrades are needed for a B grade.
+Four upgrades are needed for a B grade.
 To obtain an A grade, you must develop your own upgrade and implement it.
 
 You can make any of the upgrades that need to be made to this game:
